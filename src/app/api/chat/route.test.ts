@@ -7,10 +7,16 @@ import type { ChatMessage } from "@/lib/chat/schema";
 const streamChat = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/server/anthropic", () => ({ streamChat }));
 
-function post(body: unknown, ip = "203.0.113.1"): Request {
+const getCurrentUser = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/server/auth", () => ({ getCurrentUser }));
+
+const alice = { login: "alice", name: "Alice" };
+const bob = { login: "bob", name: "Bob" };
+
+function post(body: unknown): Request {
   return new Request("http://localhost/api/chat", {
     method: "POST",
-    headers: { "Content-Type": "application/json", "x-forwarded-for": ip },
+    headers: { "Content-Type": "application/json" },
     body: typeof body === "string" ? body : JSON.stringify(body),
   });
 }
@@ -27,6 +33,7 @@ beforeEach(() => {
   vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
   vi.stubEnv("CHAT_RATE_LIMIT_PER_MINUTE", "2");
   streamChat.mockReset();
+  getCurrentUser.mockReset().mockResolvedValue(alice);
 });
 
 describe("POST /api/chat", () => {
@@ -78,7 +85,18 @@ describe("POST /api/chat", () => {
     expect(streamChat).not.toHaveBeenCalled();
   });
 
-  it("rate-limits per client address", async () => {
+  it("rejects unauthenticated requests with 401 without calling the model", async () => {
+    getCurrentUser.mockResolvedValue(null);
+    const { POST } = await loadRoute();
+
+    const response = await POST(post(validBody));
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({ error: { code: "unauthorized" } });
+    expect(streamChat).not.toHaveBeenCalled();
+  });
+
+  it("rate-limits per signed-in user", async () => {
     streamChat.mockImplementation(async function* () {});
     const { POST } = await loadRoute();
 
@@ -88,7 +106,8 @@ describe("POST /api/chat", () => {
     expect(limited.status).toBe(429);
     expect(Number(limited.headers.get("Retry-After"))).toBeGreaterThan(0);
 
-    expect((await POST(post(validBody, "203.0.113.2"))).status).toBe(200);
+    getCurrentUser.mockResolvedValue(bob);
+    expect((await POST(post(validBody))).status).toBe(200);
   });
 
   it("aborts the model request when the client cancels the stream", async () => {

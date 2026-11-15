@@ -1,8 +1,9 @@
 import { encodeEvent, STREAM_CONTENT_TYPE, type ErrorCode } from "@/lib/chat/protocol";
 import { chatRequestSchema } from "@/lib/chat/schema";
 import { streamChat } from "@/lib/server/anthropic";
+import { getCurrentUser } from "@/lib/server/auth";
 import { getServerConfig } from "@/lib/server/config";
-import { clientKey, createRateLimiter, type RateLimiter } from "@/lib/server/rate-limit";
+import { createRateLimiter, type RateLimiter } from "@/lib/server/rate-limit";
 
 let limiter: RateLimiter | undefined;
 
@@ -11,10 +12,13 @@ function errorResponse(status: number, code: ErrorCode, headers?: HeadersInit): 
 }
 
 export async function POST(request: Request): Promise<Response> {
+  const user = await getCurrentUser();
+  if (!user) return errorResponse(401, "unauthorized");
+
   const config = getServerConfig();
 
   limiter ??= createRateLimiter({ limit: config.rateLimitPerMinute, windowMs: 60_000 });
-  const rate = limiter.check(clientKey(request.headers));
+  const rate = limiter.check(user.login);
   if (!rate.allowed) {
     return errorResponse(429, "rate_limited", { "Retry-After": String(rate.retryAfterSeconds) });
   }
