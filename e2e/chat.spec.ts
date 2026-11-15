@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 /** The model API is mocked at the network boundary, so no API key is needed. */
 function ndjson(events: object[]): string {
