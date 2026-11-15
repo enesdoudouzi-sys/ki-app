@@ -12,6 +12,9 @@ export interface CurrentUser {
   name: string;
 }
 
+// On Render the public URL is provided by the platform, so it need not be configured twice.
+process.env.NEXTAUTH_URL ??= process.env.RENDER_EXTERNAL_URL;
+
 const allowlist = () => parseAllowlist(process.env.AUTH_ALLOWED_USERS);
 
 export const authOptions: NextAuthOptions = {
