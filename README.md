@@ -43,6 +43,21 @@ Die App läuft dann unter <http://localhost:3000>.
 Für eine Bereitstellung im Internet dieselben Schritte mit der echten Adresse wiederholen
 (`NEXTAUTH_URL` und die beiden URLs der OAuth App).
 
+## Bereitstellung auf Render
+
+Das Repo enthält einen Blueprint (`render.yaml`) für [Render](https://render.com).
+
+1. Im Render-Dashboard **New → Blueprint** wählen, dieses Repo verbinden und den Branch
+   `ki-chat-app` auswählen.
+2. Die abgefragten Werte eintragen: `ANTHROPIC_API_KEY`, `GITHUB_ID`, `GITHUB_SECRET`,
+   `AUTH_ALLOWED_USERS`. `NEXTAUTH_SECRET` erzeugt Render selbst, die öffentliche Adresse
+   übernimmt die App automatisch.
+3. Nach dem ersten Deploy die Adresse der App (`https://….onrender.com`) in der GitHub OAuth App
+   als Homepage URL und, mit `/api/auth/callback/github` am Ende, als Callback URL eintragen.
+
+Im kostenlosen Tarif schläft die App nach etwa 15 Minuten ohne Zugriff ein; der nächste Aufruf
+dauert dann rund eine Minute.
+
 ## Konfiguration
 
 | Variable                     | Pflicht | Standard          | Bedeutung                                                      |

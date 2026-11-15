@@ -1,0 +1,23 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: ki-chat-app
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: ki-chat-app
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm run start
+    healthCheckPath: /login
+    envVars:
+      - key: NEXTAUTH_SECRET
+        generateValue: true
+      # Secrets below are entered in the Render dashboard, never committed.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GITHUB_ID
+        sync: false
+      - key: GITHUB_SECRET
+        sync: false
+      - key: AUTH_ALLOWED_USERS
+        sync: false
