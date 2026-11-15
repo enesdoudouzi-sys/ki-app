@@ -67,17 +67,17 @@ async function errorCodeFromResponse(response: Response): Promise<ErrorCode> {
 }
 
 /** Must only be mounted in the browser: the initial state reads localStorage. */
-export function useChat() {
+export function useChat(userId: string) {
   const [state, dispatch] = useReducer(reducer, undefined, (): State => ({
-    messages: loadConversation(),
+    messages: loadConversation(userId),
     status: "idle",
     error: null,
   }));
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    if (state.status === "idle") saveConversation(state.messages);
-  }, [state.messages, state.status]);
+    if (state.status === "idle") saveConversation(userId, state.messages);
+  }, [userId, state.messages, state.status]);
 
   useEffect(() => () => abortRef.current?.abort(), []);
 

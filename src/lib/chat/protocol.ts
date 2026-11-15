@@ -11,6 +11,7 @@ export type StopReason = z.infer<typeof stopReasonSchema>;
 
 export const errorCodeSchema = z.enum([
   "bad_request",
+  "unauthorized",
   "rate_limited",
   "not_configured",
   "upstream_unavailable",

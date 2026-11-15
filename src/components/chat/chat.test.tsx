@@ -7,6 +7,11 @@ import { streamFromEvents } from "@/test/streams";
 
 import { Chat } from "./chat";
 
+const signOut = vi.hoisted(() => vi.fn());
+vi.mock("next-auth/react", () => ({ signOut }));
+
+const alice = { login: "alice", name: "Alice" };
+
 function mockFetchWithEvents(events: ChatStreamEvent[]) {
   const fetchMock = vi.fn<typeof fetch>(async () => {
     return new Response(streamFromEvents(events));
@@ -28,7 +33,7 @@ describe("Chat", () => {
       { type: "text", delta: "**Welt**!" },
       { type: "done", stopReason: "complete" },
     ]);
-    render(<Chat />);
+    render(<Chat user={alice} />);
 
     await sendMessage("Wer bist du?");
 
@@ -47,7 +52,7 @@ describe("Chat", () => {
       { type: "text", delta: "Antwort" },
       { type: "done", stopReason: "complete" },
     ]);
-    render(<Chat />);
+    render(<Chat user={alice} />);
 
     await sendMessage("Erste Frage");
     await screen.findByText("Antwort");
@@ -65,7 +70,7 @@ describe("Chat", () => {
 
   it("shows an error and keeps the user's message when the stream reports a failure", async () => {
     mockFetchWithEvents([{ type: "error", code: "upstream_unavailable" }]);
-    render(<Chat />);
+    render(<Chat user={alice} />);
 
     await sendMessage("Hallo");
 
@@ -78,7 +83,7 @@ describe("Chat", () => {
       "fetch",
       vi.fn(async () => Response.json({ error: { code: "rate_limited" } }, { status: 429 })),
     );
-    render(<Chat />);
+    render(<Chat user={alice} />);
 
     await sendMessage("Hallo");
 
@@ -90,7 +95,7 @@ describe("Chat", () => {
       { type: "text", delta: "Lange Antwort" },
       { type: "done", stopReason: "max_tokens" },
     ]);
-    render(<Chat />);
+    render(<Chat user={alice} />);
 
     await sendMessage("Schreib viel");
 
@@ -102,12 +107,12 @@ describe("Chat", () => {
       { type: "text", delta: "Gespeicherte Antwort" },
       { type: "done", stopReason: "complete" },
     ]);
-    const first = render(<Chat />);
+    const first = render(<Chat user={alice} />);
     await sendMessage("Merk dir das");
     await screen.findByText("Gespeicherte Antwort");
     first.unmount();
 
-    render(<Chat />);
+    render(<Chat user={alice} />);
     expect(screen.getByText("Merk dir das")).toBeInTheDocument();
     expect(screen.getByText("Gespeicherte Antwort")).toBeInTheDocument();
 
@@ -116,9 +121,33 @@ describe("Chat", () => {
     expect(screen.getByText("Wie kann ich helfen?")).toBeInTheDocument();
   });
 
+  it("keeps conversations of different users separate", async () => {
+    mockFetchWithEvents([
+      { type: "text", delta: "Nur für Alice" },
+      { type: "done", stopReason: "complete" },
+    ]);
+    const first = render(<Chat user={alice} />);
+    await sendMessage("Geheim");
+    await screen.findByText("Nur für Alice");
+    first.unmount();
+
+    render(<Chat user={{ login: "bob", name: "Bob" }} />);
+
+    expect(screen.queryByText("Geheim")).not.toBeInTheDocument();
+    expect(screen.getByText("Wie kann ich helfen?")).toBeInTheDocument();
+  });
+
+  it("signs the user out", async () => {
+    render(<Chat user={alice} />);
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Abmelden" }));
+
+    expect(signOut).toHaveBeenCalledWith({ callbackUrl: "/login" });
+  });
+
   it("does not send blank messages", async () => {
     const fetchMock = mockFetchWithEvents([]);
-    render(<Chat />);
+    render(<Chat user={alice} />);
 
     await userEvent.setup().type(screen.getByLabelText("Nachricht"), "   ");
 

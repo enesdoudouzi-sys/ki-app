@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { clientKey, createRateLimiter } from "./rate-limit";
+import { createRateLimiter } from "./rate-limit";
 
 describe("createRateLimiter", () => {
   it("blocks requests over the limit and reports when to retry", () => {
@@ -29,15 +29,5 @@ describe("createRateLimiter", () => {
     expect(limiter.check("a").allowed).toBe(true);
     expect(limiter.check("b").allowed).toBe(true);
     expect(limiter.check("a").allowed).toBe(false);
-  });
-});
-
-describe("clientKey", () => {
-  it("uses the first forwarded address", () => {
-    expect(clientKey(new Headers({ "x-forwarded-for": "1.2.3.4, 10.0.0.1" }))).toBe("1.2.3.4");
-  });
-
-  it("falls back to a shared key when no address is known", () => {
-    expect(clientKey(new Headers())).toBe("anonymous");
   });
 });
