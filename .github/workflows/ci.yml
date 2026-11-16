@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, ki-chat-app]
+    branches: [main]
   pull_request:
 
 concurrency:

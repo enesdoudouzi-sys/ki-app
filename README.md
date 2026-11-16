@@ -47,8 +47,7 @@ Für eine Bereitstellung im Internet dieselben Schritte mit der echten Adresse w
 
 Das Repo enthält einen Blueprint (`render.yaml`) für [Render](https://render.com).
 
-1. Im Render-Dashboard **New → Blueprint** wählen, dieses Repo verbinden und den Branch
-   `ki-chat-app` auswählen.
+1. Im Render-Dashboard **New → Blueprint** wählen, dieses Repo verbinden.
 2. Die abgefragten Werte eintragen: `GEMINI_API_KEY`, `GITHUB_ID`, `GITHUB_SECRET`,
    `AUTH_ALLOWED_USERS`. `NEXTAUTH_SECRET` erzeugt Render selbst, die öffentliche Adresse
    übernimmt die App automatisch.
