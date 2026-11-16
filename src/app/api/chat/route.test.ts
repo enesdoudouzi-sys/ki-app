@@ -5,7 +5,7 @@ import { readEvents, type ChatStreamEvent } from "@/lib/chat/protocol";
 import type { ChatMessage } from "@/lib/chat/schema";
 
 const streamChat = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/server/anthropic", () => ({ streamChat }));
+vi.mock("@/lib/server/model", () => ({ streamChat }));
 
 const getCurrentUser = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/server/auth", () => ({ getCurrentUser }));
@@ -30,7 +30,8 @@ async function loadRoute() {
 }
 
 beforeEach(() => {
-  vi.stubEnv("ANTHROPIC_API_KEY", "test-key");
+  vi.stubEnv("AI_PROVIDER", "");
+  vi.stubEnv("GEMINI_API_KEY", "test-key");
   vi.stubEnv("CHAT_RATE_LIMIT_PER_MINUTE", "2");
   streamChat.mockReset();
   getCurrentUser.mockReset().mockResolvedValue(alice);
@@ -74,8 +75,8 @@ describe("POST /api/chat", () => {
   });
 
   it("returns 503 when no API credentials are configured", async () => {
-    vi.stubEnv("ANTHROPIC_API_KEY", "");
-    vi.stubEnv("ANTHROPIC_AUTH_TOKEN", "");
+    vi.stubEnv("GEMINI_API_KEY", "");
+    vi.stubEnv("GOOGLE_API_KEY", "");
     const { POST } = await loadRoute();
 
     const response = await POST(post(validBody));

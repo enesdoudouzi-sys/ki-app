@@ -1,6 +1,6 @@
 import { encodeEvent, STREAM_CONTENT_TYPE, type ErrorCode } from "@/lib/chat/protocol";
 import { chatRequestSchema } from "@/lib/chat/schema";
-import { streamChat } from "@/lib/server/anthropic";
+import { streamChat } from "@/lib/server/model";
 import { getCurrentUser } from "@/lib/server/auth";
 import { getServerConfig } from "@/lib/server/config";
 import { createRateLimiter, type RateLimiter } from "@/lib/server/rate-limit";
