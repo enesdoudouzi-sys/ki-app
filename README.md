@@ -1,7 +1,7 @@
 # KI-Chat
 
 Chat-Anwendung mit gestreamten KI-Antworten und GitHub-Login, gebaut mit Next.js (App Router),
-TypeScript und dem Anthropic SDK.
+TypeScript und wahlweise Google Gemini oder Anthropic Claude als Modell.
 
 ## Funktionen
 
@@ -49,7 +49,7 @@ Das Repo enthält einen Blueprint (`render.yaml`) für [Render](https://render.c
 
 1. Im Render-Dashboard **New → Blueprint** wählen, dieses Repo verbinden und den Branch
    `ki-chat-app` auswählen.
-2. Die abgefragten Werte eintragen: `ANTHROPIC_API_KEY`, `GITHUB_ID`, `GITHUB_SECRET`,
+2. Die abgefragten Werte eintragen: `GEMINI_API_KEY`, `GITHUB_ID`, `GITHUB_SECRET`,
    `AUTH_ALLOWED_USERS`. `NEXTAUTH_SECRET` erzeugt Render selbst, die öffentliche Adresse
    übernimmt die App automatisch.
 3. Nach dem ersten Deploy die Adresse der App (`https://….onrender.com`) in der GitHub OAuth App
@@ -60,21 +60,31 @@ dauert dann rund eine Minute.
 
 ## Konfiguration
 
-| Variable                     | Pflicht | Standard          | Bedeutung                                                      |
-| ---------------------------- | ------- | ----------------- | -------------------------------------------------------------- |
-| `ANTHROPIC_API_KEY`          | ja      | –                 | API-Schlüssel, bleibt auf dem Server                           |
-| `NEXTAUTH_SECRET`            | ja      | –                 | Verschlüsselt die Sitzungs-Cookies                             |
-| `NEXTAUTH_URL`               | ja      | –                 | Öffentliche Adresse der App                                    |
-| `GITHUB_ID`, `GITHUB_SECRET` | ja      | –                 | Zugangsdaten der GitHub OAuth App                              |
-| `AUTH_ALLOWED_USERS`         | ja      | leer (niemand)    | Erlaubte GitHub-Benutzernamen, kommagetrennt; `*` erlaubt alle |
-| `ANTHROPIC_MODEL`            | nein    | `claude-opus-5-5` | Verwendetes Modell                                             |
-| `CHAT_MAX_OUTPUT_TOKENS`     | nein    | `16000`           | Obergrenze für die Länge einer Antwort                         |
-| `CHAT_RATE_LIMIT_PER_MINUTE` | nein    | `20`              | Erlaubte Anfragen pro Minute und Benutzer                      |
+| Variable                     | Pflicht             | Standard           | Bedeutung                                                      |
+| ---------------------------- | ------------------- | ------------------ | -------------------------------------------------------------- |
+| `GEMINI_API_KEY`             | ja                  | –                  | API-Schlüssel für Gemini, bleibt auf dem Server                |
+| `NEXTAUTH_SECRET`            | ja                  | –                  | Verschlüsselt die Sitzungs-Cookies                             |
+| `NEXTAUTH_URL`               | ja                  | –                  | Öffentliche Adresse der App                                    |
+| `GITHUB_ID`, `GITHUB_SECRET` | ja                  | –                  | Zugangsdaten der GitHub OAuth App                              |
+| `AUTH_ALLOWED_USERS`         | ja                  | leer (niemand)     | Erlaubte GitHub-Benutzernamen, kommagetrennt; `*` erlaubt alle |
+| `GEMINI_MODEL`               | nein                | `gemini-3.8-flash` | Verwendetes Gemini-Modell                                      |
+| `AI_PROVIDER`                | nein                | `gemini`           | `gemini` oder `anthropic`                                      |
+| `ANTHROPIC_API_KEY`          | nur bei `anthropic` | –                  | API-Schlüssel für Anthropic                                    |
+| `ANTHROPIC_MODEL`            | nein                | `claude-opus-5-5`  | Verwendetes Claude-Modell                                      |
+| `CHAT_MAX_OUTPUT_TOKENS`     | nein                | `16000`            | Obergrenze für die Länge einer Antwort                         |
+| `CHAT_RATE_LIMIT_PER_MINUTE` | nein                | `20`               | Erlaubte Anfragen pro Minute und Benutzer                      |
+
+### Kostenlos mit Gemini
+
+Den Schlüssel gibt es ohne Zahlungsdaten unter <https://aistudio.google.com/apikey>. Das kostenlose
+Kontingent ist pro Tag begrenzt; ist es aufgebraucht, meldet der Chat „Zu viele Anfragen". Die
+aktuellen Limits stehen in Google AI Studio. Im kostenlosen Tarif kann Google Eingaben zur
+Verbesserung seiner Produkte verwenden – also keine vertraulichen Inhalte eingeben.
 
 ## Architektur
 
 ```
-Browser                          Next.js-Server                     Anthropic API
+Browser                          Next.js-Server                     Modell-API
 ───────                          ──────────────                     ─────────────
 Login-Seite      ── GitHub ──▶  /api/auth  (Sitzungs-Cookie)
 
@@ -86,15 +96,16 @@ Chat-Oberfläche  ── POST ────▶  /api/chat
 Text erscheint   ◀─ NDJSON ───    5. Antwort weiterreichen ◀─────────
 ```
 
-| Pfad                    | Inhalt                                                                       |
-| ----------------------- | ---------------------------------------------------------------------------- |
-| `src/app/api/chat/`     | HTTP-Endpunkt: Anmeldung, Rate-Limit, Validierung, Streaming                 |
-| `src/app/login/`        | Anmeldeseite                                                                 |
-| `src/lib/server/`       | Nur serverseitig: Anmeldung, Modellaufruf, Konfiguration, Rate-Limiter       |
-| `src/lib/chat/`         | Von Client und Server geteilt: Schemas, Streaming-Protokoll, Texte, Speicher |
-| `src/hooks/use-chat.ts` | Zustand des Chats im Browser (Senden, Streamen, Stoppen, Fehler)             |
-| `src/components/`       | Oberfläche: Nachrichtenliste, Eingabefeld, Anmelde-Button                    |
-| `e2e/`                  | Browser-Tests mit Playwright                                                 |
+| Pfad                        | Inhalt                                                                       |
+| --------------------------- | ---------------------------------------------------------------------------- |
+| `src/app/api/chat/`         | HTTP-Endpunkt: Anmeldung, Rate-Limit, Validierung, Streaming                 |
+| `src/app/login/`            | Anmeldeseite                                                                 |
+| `src/lib/server/`           | Nur serverseitig: Anmeldung, Konfiguration, Rate-Limiter                     |
+| `src/lib/server/providers/` | Modellaufruf je Anbieter (Gemini, Anthropic)                                 |
+| `src/lib/chat/`             | Von Client und Server geteilt: Schemas, Streaming-Protokoll, Texte, Speicher |
+| `src/hooks/use-chat.ts`     | Zustand des Chats im Browser (Senden, Streamen, Stoppen, Fehler)             |
+| `src/components/`           | Oberfläche: Nachrichtenliste, Eingabefeld, Anmelde-Button                    |
+| `e2e/`                      | Browser-Tests mit Playwright                                                 |
 
 Entscheidungen, die man kennen sollte:
 
@@ -104,6 +115,8 @@ Entscheidungen, die man kennen sollte:
 - **Sitzungen ohne Datenbank:** verschlüsseltes, nur für den Server lesbares Cookie (7 Tage gültig).
 - **Geprüft wird am Endpunkt selbst** (`getCurrentUser` in `src/lib/server/auth.ts`), nicht nur an
   der Seite. Ein direkter Aufruf von `/api/chat` ohne Anmeldung erhält 401.
+- **Modellanbieter austauschbar.** Gemini und Anthropic liegen hinter derselben Schnittstelle
+  (`src/lib/server/providers/`); `AI_PROVIDER` wählt aus. Ein weiterer Anbieter ist eine neue Datei.
 - **Der API-Schlüssel verlässt nie den Server.** Der Browser spricht nur mit `/api/chat`.
 - **Streaming-Protokoll:** eine JSON-Zeile pro Ereignis (`text`, `done`, `error`). Das Schema in
   `src/lib/chat/protocol.ts` wird von beiden Seiten verwendet.
@@ -130,7 +143,7 @@ Bei jedem Push und Pull Request führt GitHub Actions alle Prüfungen aus (`.git
 ## Bekannte Grenzen
 
 - **Kein Kostenlimit pro Benutzer.** Das Rate-Limit begrenzt die Anzahl der Anfragen, nicht die
-  Ausgaben. Ein Ausgabenlimit lässt sich in der Anthropic-Konsole setzen.
+  Ausgaben. Ein Ausgabenlimit lässt sich beim jeweiligen Anbieter setzen.
 - **Der Rate-Limiter zählt im Arbeitsspeicher** einer Serverinstanz. Auf Serverless-Plattformen
   oder bei mehreren Instanzen braucht er einen gemeinsamen Speicher (z. B. Redis); die
   Schnittstelle in `src/lib/server/rate-limit.ts` ist dafür vorbereitet.
