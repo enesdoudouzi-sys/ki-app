@@ -43,3 +43,21 @@ describe("chunkDocument", () => {
     expect(chunkDocument({ id: "x", title: "X", text: "# X\n\n## Leer\n\n" })).toEqual([]);
   });
 });
+
+describe("chunkDocument mit Codeblöcken", () => {
+  it("hält Kommentarzeilen in Codeblöcken nicht für Überschriften", () => {
+    const text = [
+      "# Titel",
+      "",
+      "Text.",
+      "",
+      "```bash",
+      "# ein Kommentar",
+      "npm install",
+      "```",
+    ].join("\n");
+    const chunks = chunkDocument({ id: "x", title: "Titel", text });
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0]?.text).toContain("# ein Kommentar");
+  });
+});

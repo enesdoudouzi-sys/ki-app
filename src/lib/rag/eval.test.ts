@@ -68,7 +68,7 @@ const HARD_CASES: Array<{ question: string; expected: string }> = [
   },
 ];
 
-const documents = loadDocuments(path.join(process.cwd(), "knowledge"));
+const documents = loadDocuments(path.join(process.cwd(), "src/lib/rag/fixtures"));
 const index = new Bm25Index(documents.flatMap((document) => chunkDocument(document)));
 
 /** Rang (ab 1) des ersten Treffers aus dem erwarteten Dokument, oder null. */

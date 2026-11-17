@@ -22,6 +22,7 @@ export function chunkDocument(document: Document, maxChars = 700): Chunk[] {
   const chunks: Chunk[] = [];
   let heading = document.title;
   let buffer: string[] = [];
+  let inCodeFence = false;
 
   const flush = () => {
     const body = buffer.join("\n").trim();
@@ -42,7 +43,9 @@ export function chunkDocument(document: Document, maxChars = 700): Chunk[] {
   };
 
   for (const line of document.text.split("\n")) {
-    const match = /^#{1,3}\s+(.*)$/.exec(line);
+    // In Codeblöcken sind Zeilen mit "#" Kommentare, keine Überschriften.
+    if (line.trimStart().startsWith("```")) inCodeFence = !inCodeFence;
+    const match = inCodeFence ? null : /^#{1,3}\s+(.*)$/.exec(line);
     if (match) {
       flush();
       heading = match[1].trim();
