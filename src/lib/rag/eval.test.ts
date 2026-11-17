@@ -103,9 +103,8 @@ describe("Auswertung der Wissenssuche", () => {
   const mrr = ranks.reduce<number>((sum, rank) => sum + (rank ? 1 / rank : 0), 0) / CASES.length;
 
   it("gibt die Kennzahlen aus", () => {
-    const misses = CASES.filter((_, i) => ranks[i] !== 1).map(
-      ({ question }, _i) =>
-        `${question} -> Rang ${ranks[CASES.findIndex((c) => c.question === question)] ?? "nicht gefunden"}`,
+    const misses = CASES.flatMap(({ question }, i) =>
+      ranks[i] === 1 ? [] : [`${question} -> ${ranks[i] ? `Rang ${ranks[i]}` : "nicht gefunden"}`],
     );
     console.log(
       [
