@@ -26,7 +26,16 @@ export function getServerConfig() {
       ? Boolean(env.GEMINI_API_KEY || env.GOOGLE_API_KEY)
       : Boolean(env.ANTHROPIC_API_KEY || env.ANTHROPIC_AUTH_TOKEN);
 
+  const defaultSourceDir = "node_modules/next/dist/docs/01-app";
+  const ragSourceDir = env.RAG_SOURCE_DIR?.trim() || defaultSourceDir;
+
   return {
+    ragEnabled: env.RAG_ENABLED?.trim().toLowerCase() === "true",
+    ragSourceDir,
+    // Für die mitgelieferte Next.js-Dokumentation lassen sich Quellen verlinken.
+    ragSourceUrlBase:
+      env.RAG_SOURCE_URL_BASE?.trim() ||
+      (ragSourceDir === defaultSourceDir ? "https://nextjs.org/docs/app/" : undefined),
     provider,
     model,
     hasCredentials,

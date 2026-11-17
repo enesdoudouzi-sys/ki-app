@@ -4,7 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 
 import type { ErrorCode, StopReason } from "@/lib/chat/protocol";
 
-import { SYSTEM_PROMPT, type ChatProvider } from "./types";
+import { buildSystemPrompt, type ChatProvider } from "./types";
 
 /** Models that accept the server-side refusal fallback parameter. */
 const FALLBACK_CAPABLE_MODELS = new Set([
@@ -42,7 +42,7 @@ export const streamAnthropic: ChatProvider = async function* (messages, signal, 
       {
         model: options.model,
         max_tokens: options.maxOutputTokens,
-        system: SYSTEM_PROMPT,
+        system: buildSystemPrompt(options.context),
         // Caches the growing conversation prefix between turns.
         cache_control: { type: "ephemeral" },
         messages,

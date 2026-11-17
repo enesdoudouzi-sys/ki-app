@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { sourceSchema } from "./protocol";
 import { chatRoleSchema } from "./schema";
 
 /** Scoped per user so accounts sharing a browser never see each other's conversation. */
@@ -10,6 +11,7 @@ export const storedMessageSchema = z.object({
   role: chatRoleSchema,
   content: z.string(),
   notice: z.string().optional(),
+  sources: z.array(sourceSchema).optional(),
 });
 export type StoredMessage = z.infer<typeof storedMessageSchema>;
 

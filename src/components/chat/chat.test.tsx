@@ -47,6 +47,28 @@ describe("Chat", () => {
     });
   });
 
+  it("zeigt Quellen unter der Antwort an, mit Link wenn vorhanden", async () => {
+    mockFetchWithEvents([
+      {
+        type: "sources",
+        sources: [
+          { title: "Fonts", path: "a/fonts", url: "https://example.com/fonts" },
+          { title: "Ohne Link", path: "a/x" },
+        ],
+      },
+      { type: "text", delta: "Antwort [1]" },
+      { type: "done", stopReason: "complete" },
+    ]);
+    render(<Chat user={alice} />);
+
+    await sendMessage("Frage");
+
+    const link = await screen.findByRole("link", { name: "Fonts" });
+    expect(link).toHaveAttribute("href", "https://example.com/fonts");
+    expect(link).toHaveAttribute("rel", expect.stringContaining("noopener"));
+    expect(screen.getByText("Ohne Link")).toBeInTheDocument();
+  });
+
   it("sends the whole conversation on follow-up messages", async () => {
     const fetchMock = mockFetchWithEvents([
       { type: "text", delta: "Antwort" },

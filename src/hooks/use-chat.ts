@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
 
 import { ERROR_MESSAGES, STOP_NOTICES } from "@/lib/chat/messages";
-import { errorCodeSchema, readEvents, type ErrorCode } from "@/lib/chat/protocol";
+import { errorCodeSchema, readEvents, type ErrorCode, type Source } from "@/lib/chat/protocol";
 import { loadConversation, saveConversation, type StoredMessage } from "@/lib/chat/storage";
 
 export type ChatStatus = "idle" | "streaming";
@@ -16,6 +16,7 @@ interface State {
 
 type Action =
   | { type: "submitted"; user: StoredMessage; assistant: StoredMessage }
+  | { type: "sources"; id: string; sources: Source[] }
   | { type: "delta"; id: string; delta: string }
   | { type: "finished"; id: string; notice?: string }
   | { type: "failed"; id: string; error: string }
@@ -28,6 +29,13 @@ function reducer(state: State, action: Action): State {
         messages: [...state.messages, action.user, action.assistant],
         status: "streaming",
         error: null,
+      };
+    case "sources":
+      return {
+        ...state,
+        messages: state.messages.map((message) =>
+          message.id === action.id ? { ...message, sources: action.sources } : message,
+        ),
       };
     case "delta":
       return {
@@ -112,7 +120,9 @@ export function useChat(userId: string) {
         }
 
         for await (const event of readEvents(response.body)) {
-          if (event.type === "text") {
+          if (event.type === "sources") {
+            dispatch({ type: "sources", id: assistant.id, sources: event.sources });
+          } else if (event.type === "text") {
             dispatch({ type: "delta", id: assistant.id, delta: event.delta });
           } else if (event.type === "done") {
             dispatch({

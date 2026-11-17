@@ -19,7 +19,15 @@ export const errorCodeSchema = z.enum([
 ]);
 export type ErrorCode = z.infer<typeof errorCodeSchema>;
 
+export const sourceSchema = z.object({
+  title: z.string(),
+  path: z.string(),
+  url: z.string().optional(),
+});
+export type Source = z.infer<typeof sourceSchema>;
+
 export const chatStreamEventSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("sources"), sources: z.array(sourceSchema) }),
   z.object({ type: z.literal("text"), delta: z.string() }),
   z.object({ type: z.literal("done"), stopReason: stopReasonSchema }),
   z.object({ type: z.literal("error"), code: errorCodeSchema }),

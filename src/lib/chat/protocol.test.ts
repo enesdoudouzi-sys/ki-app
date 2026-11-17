@@ -11,6 +11,10 @@ async function collect(stream: ReadableStream<Uint8Array>): Promise<ChatStreamEv
 }
 
 const events: ChatStreamEvent[] = [
+  {
+    type: "sources",
+    sources: [{ title: "Seite", path: "a/b", url: "https://example.com/a/b" }],
+  },
   { type: "text", delta: "Hallo " },
   { type: "text", delta: "Wélt 🌍\nZeile 2" },
   { type: "done", stopReason: "complete" },

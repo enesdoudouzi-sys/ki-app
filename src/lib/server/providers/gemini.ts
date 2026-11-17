@@ -4,7 +4,7 @@ import { ApiError, FinishReason, GoogleGenAI } from "@google/genai";
 
 import type { ErrorCode, StopReason } from "@/lib/chat/protocol";
 
-import { SYSTEM_PROMPT, type ChatProvider } from "./types";
+import { buildSystemPrompt, type ChatProvider } from "./types";
 
 const BLOCKED_FINISH_REASONS = new Set<FinishReason>([
   FinishReason.SAFETY,
@@ -49,7 +49,7 @@ export const streamGemini: ChatProvider = async function* (messages, signal, opt
         parts: [{ text: message.content }],
       })),
       config: {
-        systemInstruction: SYSTEM_PROMPT,
+        systemInstruction: buildSystemPrompt(options.context),
         maxOutputTokens: options.maxOutputTokens,
         abortSignal: signal,
       },
