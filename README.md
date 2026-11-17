@@ -59,19 +59,22 @@ dauert dann rund eine Minute.
 
 ## Konfiguration
 
-| Variable                     | Pflicht             | Standard           | Bedeutung                                                      |
-| ---------------------------- | ------------------- | ------------------ | -------------------------------------------------------------- |
-| `GEMINI_API_KEY`             | ja                  | –                  | API-Schlüssel für Gemini, bleibt auf dem Server                |
-| `NEXTAUTH_SECRET`            | ja                  | –                  | Verschlüsselt die Sitzungs-Cookies                             |
-| `NEXTAUTH_URL`               | ja                  | –                  | Öffentliche Adresse der App                                    |
-| `GITHUB_ID`, `GITHUB_SECRET` | ja                  | –                  | Zugangsdaten der GitHub OAuth App                              |
-| `AUTH_ALLOWED_USERS`         | ja                  | leer (niemand)     | Erlaubte GitHub-Benutzernamen, kommagetrennt; `*` erlaubt alle |
-| `GEMINI_MODEL`               | nein                | `gemini-3.8-flash` | Verwendetes Gemini-Modell                                      |
-| `AI_PROVIDER`                | nein                | `gemini`           | `gemini` oder `anthropic`                                      |
-| `ANTHROPIC_API_KEY`          | nur bei `anthropic` | –                  | API-Schlüssel für Anthropic                                    |
-| `ANTHROPIC_MODEL`            | nein                | `claude-opus-5-5`  | Verwendetes Claude-Modell                                      |
-| `CHAT_MAX_OUTPUT_TOKENS`     | nein                | `16000`            | Obergrenze für die Länge einer Antwort                         |
-| `CHAT_RATE_LIMIT_PER_MINUTE` | nein                | `20`               | Erlaubte Anfragen pro Minute und Benutzer                      |
+| Variable                     | Pflicht             | Standard              | Bedeutung                                                      |
+| ---------------------------- | ------------------- | --------------------- | -------------------------------------------------------------- |
+| `GEMINI_API_KEY`             | ja                  | –                     | API-Schlüssel für Gemini, bleibt auf dem Server                |
+| `NEXTAUTH_SECRET`            | ja                  | –                     | Verschlüsselt die Sitzungs-Cookies                             |
+| `NEXTAUTH_URL`               | ja                  | –                     | Öffentliche Adresse der App                                    |
+| `GITHUB_ID`, `GITHUB_SECRET` | ja                  | –                     | Zugangsdaten der GitHub OAuth App                              |
+| `AUTH_ALLOWED_USERS`         | ja                  | leer (niemand)        | Erlaubte GitHub-Benutzernamen, kommagetrennt; `*` erlaubt alle |
+| `GEMINI_MODEL`               | nein                | `gemini-3.8-flash`    | Verwendetes Gemini-Modell                                      |
+| `AI_PROVIDER`                | nein                | `gemini`              | `gemini` oder `anthropic`                                      |
+| `ANTHROPIC_API_KEY`          | nur bei `anthropic` | –                     | API-Schlüssel für Anthropic                                    |
+| `ANTHROPIC_MODEL`            | nein                | `claude-opus-5-5`     | Verwendetes Claude-Modell                                      |
+| `CHAT_MAX_OUTPUT_TOKENS`     | nein                | `16000`               | Obergrenze für die Länge einer Antwort                         |
+| `CHAT_RATE_LIMIT_PER_MINUTE` | nein                | `20`                  | Erlaubte Anfragen pro Minute und Benutzer                      |
+| `RAG_ENABLED`                | nein                | `false`               | `true` schaltet die Wissenssuche mit Quellen ein               |
+| `RAG_SOURCE_DIR`             | nein                | Next.js-Dokumentation | Ordner mit Markdown-Dateien für die Suche                      |
+| `RAG_SOURCE_URL_BASE`        | nein                | nextjs.org/docs/app   | Basisadresse, unter der Quellen verlinkt werden                |
 
 ### Kostenlos mit Gemini
 
@@ -79,6 +82,42 @@ Den Schlüssel gibt es ohne Zahlungsdaten unter <https://aistudio.google.com/api
 Kontingent ist pro Tag begrenzt; ist es aufgebraucht, meldet der Chat „Zu viele Anfragen". Die
 aktuellen Limits stehen in Google AI Studio. Im kostenlosen Tarif kann Google Eingaben zur
 Verbesserung seiner Produkte verwenden – also keine vertraulichen Inhalte eingeben.
+
+## Wissenssuche mit Quellen (RAG)
+
+Optional kann der Chat Fragen anhand von Dokumenten beantworten und die Quellen anzeigen. Das
+Verfahren heißt Retrieval-Augmented Generation (RAG): Zur Frage werden die passendsten Textstellen
+gesucht, dem Modell mitgegeben, und die Antwort nennt sie als [1], [2] …
+
+```bash
+RAG_ENABLED=true
+```
+
+Standardmäßig wird die Dokumentation von Next.js durchsucht, die im Projekt unter
+`node_modules/next/dist/docs/01-app` liegt. Mit `RAG_SOURCE_DIR` lässt sich ein anderer Ordner mit
+Markdown-Dateien angeben, mit `RAG_SOURCE_URL_BASE` die Adresse, unter der die Quellen verlinkt werden.
+
+**So funktioniert es** (`src/lib/rag/`):
+
+1. **Zerlegen:** Jede Seite wird an Überschriften und Absätzen in kurze Abschnitte geteilt.
+2. **Indexieren:** Ein BM25-Index zählt, welche Wörter in welchen Abschnitten vorkommen. Seltene Wörter
+   zählen mehr, lange Abschnitte werden leicht abgewertet.
+3. **Suchen:** Die letzte Nutzerfrage wird zerlegt und gegen den Index bewertet. Die besten vier
+   Abschnitte gehen als nummerierte Quellen in die Systemanweisung.
+4. **Anzeigen:** Der Server schickt die Quellen als erstes Ereignis, der Browser zeigt sie unter der Antwort.
+
+**Sicherheit:** Die Quellen werden dem Modell ausdrücklich als reine Daten übergeben. Anweisungen,
+die in einem Dokument stehen, soll es nicht befolgen.
+
+**Wie gut ist die Suche?** Die Auswertung `src/lib/rag/eval-nextjs.test.ts` stellt 12 vorab festgelegte
+Fragen an die echte Dokumentation (299 Seiten) und misst, ob die richtige Seite unter den ersten drei
+Treffern steht. Ausgangswert: **83 % der Fragen, mittlere Platzierung (MRR) 0,59**. Mit
+`npx vitest run src/lib/rag --reporter=verbose` siehst du die Ergebnisse je Frage.
+
+**Grenzen:** Eine reine Stichwortsuche findet nur Seiten, die die Wörter der Frage enthalten. Bei
+anderen Formulierungen scheitert sie (siehe die schwereren Fragen in `eval.test.ts`). Der nächste
+Schritt sind Embeddings, die nach Bedeutung statt nach Wörtern suchen. Die Stichprobe ist klein; die
+Zahlen zeigen die Richtung, sie sind kein belastbarer Benchmark.
 
 ## Architektur
 
